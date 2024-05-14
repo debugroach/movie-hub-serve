@@ -3,8 +3,9 @@ package api
 import (
 	"fmt"
 	"math"
-	"sort"
+	"sync"
 
+	db "github.com/debugroach/video-hub-serve/db/sqlc"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -39,91 +40,95 @@ func (server *Server) recommend(ctx *gin.Context) {
 		userRatings[r.Username][r.MovieID] = r.Rating
 		fmt.Println(r.Username, r.MovieID, userRatings[r.Username][r.MovieID])
 	}
-	// 获取为用户 User1 推荐的电影
-	recommendedMovies := recommendMovies(userRatings, req.Username, 20)
-	fmt.Println("Recommended Movies for", req.Username)
 
-	for _, movie := range recommendedMovies {
-		fmt.Println("MovieID:", movie.MovieID, "Predicted Score:", movie.Score)
+	recommendedMovies := recommendMoviesForUser(req.Username, userRatings)
+	movies := make([]db.Movie, 0, len(recommendedMovies))
+
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var getMovieError error
+	for _, movieID := range recommendedMovies {
+		wg.Add(1)
+		go func(movieID int) {
+			defer wg.Done()
+			fmt.Println(movieID)
+			movie, err := server.GetMovie(ctx, movieID)
+			mu.Lock()
+			if err != nil {
+				getMovieError = err
+				return
+			}
+			movies = append(movies, movie)
+			mu.Unlock()
+		}(movieID)
 	}
-	ctx.JSON(200, gin.H{"movies": recommendedMovies})
+	wg.Wait()
+	if getMovieError != nil {
+		ctx.JSON(200, errorResponse(getMovieError.Error()))
+		return
+	}
+
+	ctx.JSON(200, gin.H{"movies": movies})
 }
 
-// 计算两个用户之间的皮尔逊相关系数
 func pearsonCorrelation(user1, user2 map[int]int) float64 {
 	var sum1, sum2, sum1Sq, sum2Sq, pSum float64
-	var n float64
+	commonItems := make(map[int]bool)
 
-	for item, rating := range user1 {
-		if rating2, ok := user2[item]; ok {
-			n++
-			sum1 += float64(rating)
-			sum2 += float64(rating2)
-			sum1Sq += float64(rating) * float64(rating)
-			sum2Sq += float64(rating2) * float64(rating2)
-			pSum += float64(rating) * float64(rating2)
+	for itemID := range user1 {
+		if rating, exists := user2[itemID]; exists {
+			commonItems[itemID] = true
+			sum1 += float64(user1[itemID])
+			sum2 += float64(rating)
+			sum1Sq += float64(user1[itemID]) * float64(user1[itemID])
+			sum2Sq += float64(rating) * float64(rating)
+			pSum += float64(user1[itemID]) * float64(rating)
 		}
 	}
 
+	n := float64(len(commonItems))
 	if n == 0 {
 		return 0
 	}
 
-	num := pSum - (sum1 * sum2 / n)
-	fmt.Println(pSum, sum1, sum2, n)
-	fmt.Println(num)
-	den := math.Sqrt((sum1Sq - math.Pow(sum1, 2)/n) * (sum2Sq - math.Pow(sum2, 2)/n))
-	if den == 0 {
-		fmt.Println("den = 0")
+	numerator := pSum - (sum1 * sum2 / n)
+	denominator := math.Sqrt((sum1Sq - sum1*sum1/n) * (sum2Sq - sum2*sum2/n))
+
+	if denominator == 0 {
 		return 0
 	}
-	return num / den
+
+	return numerator / denominator
 }
+func findMostSimilarUser(targetUser string, ratings UserRatings) (string, float64) {
+	targetRatings := ratings[targetUser]
+	maxSimilarity := 0.0
+	var mostSimilar string
 
-// 推荐电影
-func recommendMovies(userRatings UserRatings, targetUser string, n int) []MovieScore {
-	// 存储未评分电影及其预测评分
-	scores := make(map[int]float64)
-	simSums := make(map[int]float64)
-
-	// 遍历每个用户计算与目标用户的相似度
-	for otherUser, ratings := range userRatings {
-		if otherUser == targetUser {
-			continue
-		}
-		sim := pearsonCorrelation(userRatings[targetUser], ratings)
-		fmt.Println(targetUser, otherUser, sim)
-		if sim <= 0 { // 只考虑正相关性
-			continue
-		}
-
-		for movieID, rating := range ratings {
-			if _, ok := userRatings[targetUser][movieID]; !ok { // 目标用户未评分的电影
-				scores[movieID] += float64(rating) * sim // 累加加权评分
-				simSums[movieID] += sim                  // 累加相似度
+	for user, ratings := range ratings {
+		if user != targetUser {
+			similarity := pearsonCorrelation(targetRatings, ratings)
+			if similarity > maxSimilarity {
+				maxSimilarity = similarity
+				mostSimilar = user
 			}
 		}
 	}
 
-	// 计算加权平均评分
-	var movieScores []MovieScore
-	for movieID, scoreSum := range scores {
-		if simSums[movieID] > 0 { // 避免除以零
-			movieScores = append(movieScores, MovieScore{
-				MovieID: movieID,
-				Score:   scoreSum / simSums[movieID],
-			})
+	return mostSimilar, maxSimilarity
+}
+
+func recommendMoviesForUser(userID string, ratings UserRatings) []int {
+	// 假设只取一个最相似的用户进行推荐，实际应用中可以考虑多个相似用户
+	mostSimilarUser, _ := findMostSimilarUser(userID, ratings)
+	similarUserRatings := ratings[mostSimilarUser]
+
+	recommendations := []int{}
+	for movieID, rating := range similarUserRatings {
+		if _, exists := ratings[userID][movieID]; !exists && rating > 0 {
+			recommendations = append(recommendations, movieID)
 		}
 	}
 
-	// 按评分降序排序
-	sort.Slice(movieScores, func(i, j int) bool {
-		return movieScores[i].Score > movieScores[j].Score
-	})
-
-	// 返回评分最高的n部电影
-	if len(movieScores) > n {
-		movieScores = movieScores[:n]
-	}
-	return movieScores
+	return recommendations
 }
