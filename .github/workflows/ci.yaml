@@ -38,7 +38,7 @@ jobs:
       run: until mysqladmin ping -h 127.0.0.1 --silent; do echo waiting for mysql; sleep 1; done
 
     - name: Create tables
-      run: make create_table
+      run: mysql -h 127.0.0.1 -P 3306 -u root -psecret movie_hub < ./movie-hub.sql
       
     - name: Test
       run: make test
