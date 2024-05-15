@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/debugroach/video-hub-serve/util"
+	"github.com/debugroach/movie-hub-serve/util"
 	"github.com/stretchr/testify/require"
 )
 

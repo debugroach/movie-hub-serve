@@ -4,44 +4,47 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/debugroach/video-hub-serve/config"
-	db "github.com/debugroach/video-hub-serve/db/sqlc"
-	"github.com/debugroach/video-hub-serve/token"
+	"github.com/debugroach/movie-hub-serve/config"
+	"github.com/debugroach/movie-hub-serve/db"
+	"github.com/debugroach/movie-hub-serve/token"
 	"github.com/gin-gonic/gin"
 )
 
+// Server represents the API server.
 type Server struct {
-	db.Store
+	*db.Queries
 	token.Maker
 	router *gin.Engine
 }
 
-func NewServer(store db.Store) *Server {
-	maker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
+// NewServer creates a new instance of the API server.
+func NewServer(q *db.Queries) *Server {
+	m, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		log.Fatal("cannot create token maker", err)
 	}
 
-	server := &Server{
-		Store: store,
-		Maker: maker,
+	s := &Server{
+		Queries: q,
+		Maker:   m,
 	}
 
-	server.setupRoutes()
-	return server
+	s.setupRoutes()
+	return s
 }
 
-func (server *Server) setupRoutes() {
+// setupRoutes configures the server's routes.
+func (s *Server) setupRoutes() {
 	r := gin.Default()
-	// CORS 中间件
+	// CORS middleware
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")                                                              // 允许所有域名的请求
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")                       // 允许的方法
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization") // 允许的头部
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")                                                              // Allow requests from all domains
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")                       // Allowed methods
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization") // Allowed headers
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type, Expires, Last-Modified, Pragma")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 
-		// 处理OPTIONS请求
+		// Handle OPTIONS request
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 		} else {
@@ -49,16 +52,18 @@ func (server *Server) setupRoutes() {
 		}
 	})
 
-	r.POST("/login", server.login)
-	r.POST("/rate", server.rate)
-	r.POST("/recommend", server.recommend)
-	server.router = r
+	r.POST("/login", s.login)
+	r.POST("/rate", s.rate)
+	r.POST("/recommend", s.recommend)
+	s.router = r
 }
 
-func (server *Server) Start(address string) error {
-	return server.router.Run(address)
+// Start starts the server on the specified address.
+func (s *Server) Start(address string) error {
+	return s.router.Run(address)
 }
 
+// errorResponse returns a JSON response with an error message.
 func errorResponse(err string) gin.H {
 	return gin.H{
 		"hasError": "true",

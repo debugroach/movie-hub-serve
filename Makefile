@@ -7,7 +7,7 @@ createdb:
 dropdb:
 	docker exec -i mysql mysql -u root -p$(password) --execute "drop database movie_hub;"
 create_table:
-	docker exec -i mysql mysql -u root -p$(password) -D movie_hub < ./movie-hub.sql
+	docker exec -i mysql mysql -u root -p$(password) -D movie_hub < ./movie_hub.sql
 sqlc:
 	sqlc generate
 test:

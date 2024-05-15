@@ -1,4 +1,4 @@
-module github.com/debugroach/video-hub-serve
+module github.com/debugroach/movie-hub-serve
 
 go 1.22.2
 

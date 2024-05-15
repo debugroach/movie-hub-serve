@@ -3,50 +3,45 @@ package api
 import (
 	"database/sql"
 
-	db "github.com/debugroach/video-hub-serve/db/sqlc"
-	"github.com/debugroach/video-hub-serve/util"
+	"github.com/debugroach/movie-hub-serve/db"
+	"github.com/debugroach/movie-hub-serve/util"
 	"github.com/gin-gonic/gin"
 )
 
+// loginRequest represents the request body for the login endpoint.
 type loginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string `json:"username" binding:"required"` // Username is the username of the user.
+	Password string `json:"password" binding:"required"` // Password is the password of the user.
 }
 
-func loginResponse(hasError bool, err string) gin.H {
-	return gin.H{
-		"hasError": hasError,
-		"message":  err,
-	}
-}
-
-func (server *Server) login(ctx *gin.Context) {
+// login handles the login endpoint.
+func (s *Server) login(ctx *gin.Context) {
 	var req loginRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(200, loginResponse(true, err.Error()))
+		ctx.JSON(200, errorResponse(err.Error()))
 		return
 	}
 
-	user, err := server.GetUser(ctx, req.Username)
+	user, err := s.GetUser(ctx, req.Username)
 
 	if err == nil {
 		if util.CheckPassword(req.Password, user.Password) == nil {
-			ctx.JSON(200, loginResponse(false, "Login successful"))
+			ctx.JSON(200, gin.H{"message": "Login successful"})
 			return
 		}
-		ctx.JSON(200, loginResponse(true, "Invalid password"))
+		ctx.JSON(200, errorResponse("Invalid username or password"))
 		return
 	}
 
 	if err != sql.ErrNoRows {
-		ctx.JSON(200, gin.H{"error": err.Error()})
+		ctx.JSON(200, gin.H{"message": err.Error()})
 		return
 	}
 
 	hashedPassword, err := util.HashPassword(req.Password)
 	if err != nil {
-		ctx.JSON(200, gin.H{"error": err.Error()})
+		ctx.JSON(200, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -55,8 +50,8 @@ func (server *Server) login(ctx *gin.Context) {
 		Password: hashedPassword,
 	}
 
-	if _, err := server.CreateUser(ctx, arg); err != nil {
-		ctx.JSON(200, gin.H{"error": err.Error()})
+	if _, err := s.CreateUser(ctx, arg); err != nil {
+		ctx.JSON(200, gin.H{"message": err.Error()})
 		return
 	}
 

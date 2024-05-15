@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/debugroach/video-hub-serve/api"
-	"github.com/debugroach/video-hub-serve/config"
-	db "github.com/debugroach/video-hub-serve/db/sqlc"
+	"github.com/debugroach/movie-hub-serve/api"
+	"github.com/debugroach/movie-hub-serve/config"
+	"github.com/debugroach/movie-hub-serve/db"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -16,8 +16,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer conn.Close()
-	store := db.NewStore(conn)
-	server := api.NewServer(store)
+	q := db.New(conn)
+	server := api.NewServer(q)
 
 	err = server.Start(":8080")
 	if err != nil {

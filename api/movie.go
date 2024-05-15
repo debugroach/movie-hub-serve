@@ -5,34 +5,28 @@ import (
 	"math"
 	"sync"
 
-	db "github.com/debugroach/video-hub-serve/db/sqlc"
+	"github.com/debugroach/movie-hub-serve/db"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// 使用 map 来模拟用户和电影评分的数据结构
-type UserRatings map[string]map[int]int
-
-// MovieScore 用于存储电影评分和电影ID
-type MovieScore struct {
-	MovieID int
-	Score   float64
-}
+type userRating map[string]map[int]int
 
 type recommendRequest struct {
 	Username string `json:"username" binding:"required"`
 }
 
-func (server *Server) recommend(ctx *gin.Context) {
+// recommend is a handler function that recommends movies for a given user.
+func (s *Server) recommend(ctx *gin.Context) {
 	req := recommendRequest{}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(200, errorResponse(err.Error()))
 		return
 	}
-	// 读取数据
-	userRatings := make(UserRatings)
 
-	ratings, _ := server.ListRatings(ctx)
+	userRatings := make(userRating)
+
+	ratings, _ := s.ListRatings(ctx)
 	for _, r := range ratings {
 		if userRatings[r.Username] == nil {
 			userRatings[r.Username] = make(map[int]int)
@@ -52,7 +46,7 @@ func (server *Server) recommend(ctx *gin.Context) {
 		go func(movieID int) {
 			defer wg.Done()
 			fmt.Println(movieID)
-			movie, err := server.GetMovie(ctx, movieID)
+			movie, err := s.GetMovie(ctx, movieID)
 			mu.Lock()
 			if err != nil {
 				getMovieError = err
@@ -71,6 +65,7 @@ func (server *Server) recommend(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{"movies": movies})
 }
 
+// pearsonCorrelation calculates the Pearson correlation coefficient between two users.
 func pearsonCorrelation(user1, user2 map[int]int) float64 {
 	var sum1, sum2, sum1Sq, sum2Sq, pSum float64
 	commonItems := make(map[int]bool)
@@ -100,7 +95,9 @@ func pearsonCorrelation(user1, user2 map[int]int) float64 {
 
 	return numerator / denominator
 }
-func findMostSimilarUser(targetUser string, ratings UserRatings) (string, float64) {
+
+// findMostSimilarUser finds the user with the highest similarity to the target user.
+func findMostSimilarUser(targetUser string, ratings userRating) (string, float64) {
 	targetRatings := ratings[targetUser]
 	maxSimilarity := 0.0
 	var mostSimilar string
@@ -118,13 +115,13 @@ func findMostSimilarUser(targetUser string, ratings UserRatings) (string, float6
 	return mostSimilar, maxSimilarity
 }
 
-func recommendMoviesForUser(userID string, ratings UserRatings) []int {
-	// 假设只取一个最相似的用户进行推荐，实际应用中可以考虑多个相似用户
+// recommendMoviesForUser recommends movies for a given user based on the ratings of similar users.
+func recommendMoviesForUser(userID string, ratings userRating) []int {
 	mostSimilarUser, _ := findMostSimilarUser(userID, ratings)
-	similarUserRatings := ratings[mostSimilarUser]
+	similaruserRatings := ratings[mostSimilarUser]
 
 	recommendations := []int{}
-	for movieID, rating := range similarUserRatings {
+	for movieID, rating := range similaruserRatings {
 		if _, exists := ratings[userID][movieID]; !exists && rating > 0 {
 			recommendations = append(recommendations, movieID)
 		}

@@ -3,12 +3,13 @@ package api
 import (
 	"database/sql"
 
-	db "github.com/debugroach/video-hub-serve/db/sqlc"
+	"github.com/debugroach/movie-hub-serve/db"
 	"github.com/gin-gonic/gin"
 )
 
+// rateRequest represents the request body for rating a movie.
 type rateRequest struct {
-	Username     string  `json:"username" bingding:"required"`
+	Username     string  `json:"username" binding:"required"`
 	MovieID      int     `json:"movieID" binding:"required"`
 	Rating       int     `json:"rating" binding:"required"`
 	Title        string  `json:"title" binding:"required"`
@@ -17,8 +18,9 @@ type rateRequest struct {
 	VoteAverage  float64 `json:"voteAverage" binding:"required"`
 }
 
-func (server *Server) createMovie(ctx *gin.Context, req rateRequest) error {
-	_, err := server.GetMovie(ctx, req.MovieID)
+// createMovie creates a new movie if it doesn't exist in the database.
+func (s *Server) createMovie(ctx *gin.Context, req rateRequest) error {
+	_, err := s.GetMovie(ctx, req.MovieID)
 	if err == nil {
 		return nil
 	}
@@ -34,21 +36,22 @@ func (server *Server) createMovie(ctx *gin.Context, req rateRequest) error {
 		BackdropPath: req.BackdropPath,
 		VoteAverage:  req.VoteAverage,
 	}
-	if _, err := server.CreateMovie(ctx, arg); err != nil {
+	if _, err := s.CreateMovie(ctx, arg); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (server *Server) rate(ctx *gin.Context) {
+// rate handles the rating of a movie.
+func (s *Server) rate(ctx *gin.Context) {
 	var req rateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(200, errorResponse(err.Error()))
 		return
 	}
 
-	if err := server.createMovie(ctx, req); err != nil {
+	if err := s.createMovie(ctx, req); err != nil {
 		ctx.JSON(200, errorResponse(err.Error()))
 		return
 	}
@@ -59,12 +62,12 @@ func (server *Server) rate(ctx *gin.Context) {
 		Rating:   req.Rating,
 	}
 
-	_, err := server.GetRating(ctx, db.GetRatingParams{
+	_, err := s.GetRating(ctx, db.GetRatingParams{
 		Username: arg.Username, MovieID: arg.MovieID,
 	})
 
 	if err == nil {
-		if _, err = server.UpdateRating(ctx, db.UpdateRatingParams{
+		if _, err = s.UpdateRating(ctx, db.UpdateRatingParams{
 			Username: arg.Username, MovieID: arg.MovieID, Rating: arg.Rating,
 		}); err != nil {
 			ctx.JSON(200, errorResponse(err.Error()))
@@ -82,7 +85,7 @@ func (server *Server) rate(ctx *gin.Context) {
 		return
 	}
 
-	if _, err := server.CreateRating(ctx, arg); err != nil {
+	if _, err := s.CreateRating(ctx, arg); err != nil {
 		ctx.JSON(200, errorResponse(err.Error()))
 		return
 	}

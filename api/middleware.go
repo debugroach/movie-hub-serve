@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/debugroach/video-hub-serve/token"
+	"github.com/debugroach/movie-hub-serve/token"
 	"github.com/gin-gonic/gin"
 )
 
