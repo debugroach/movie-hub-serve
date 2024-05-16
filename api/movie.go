@@ -22,6 +22,7 @@ func (s *Server) recommend(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(200, errorResponse(err.Error()))
 		return
+
 	}
 
 	userRatings := make(userRating)

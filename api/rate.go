@@ -21,11 +21,8 @@ type rateRequest struct {
 // createMovie creates a new movie if it doesn't exist in the database.
 func (s *Server) createMovie(ctx *gin.Context, req rateRequest) error {
 	_, err := s.GetMovie(ctx, req.MovieID)
-	if err == nil {
-		return nil
-	}
 
-	if err != sql.ErrNoRows {
+	if err != sql.ErrNoRows {	
 		return err
 	}
 
@@ -36,11 +33,9 @@ func (s *Server) createMovie(ctx *gin.Context, req rateRequest) error {
 		BackdropPath: req.BackdropPath,
 		VoteAverage:  req.VoteAverage,
 	}
-	if _, err := s.CreateMovie(ctx, arg); err != nil {
-		return err
-	}
 
-	return nil
+	_, err = s.CreateMovie(ctx, arg)
+	return err
 }
 
 // rate handles the rating of a movie.

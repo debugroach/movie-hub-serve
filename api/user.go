@@ -25,35 +25,36 @@ func (s *Server) login(ctx *gin.Context) {
 
 	user, err := s.GetUser(ctx, req.Username)
 
-	if err == nil {
-		if util.CheckPassword(req.Password, user.Password) == nil {
-			ctx.JSON(200, gin.H{"message": "Login successful"})
+	if err != nil {
+		if err != sql.ErrNoRows {
+			ctx.JSON(200, gin.H{"message": err.Error()})
 			return
 		}
-		ctx.JSON(200, errorResponse("Invalid username or password"))
+
+		hashedPassword, err := util.HashPassword(req.Password)
+		if err != nil {
+			ctx.JSON(200, gin.H{"message": err.Error()})
+			return
+		}
+
+		arg := db.CreateUserParams{
+			Username: req.Username,
+			Password: hashedPassword,
+		}
+
+		if _, err := s.CreateUser(ctx, arg); err != nil {
+			ctx.JSON(200, gin.H{"message": err.Error()})
+			return
+		}
+
+		ctx.JSON(200, gin.H{"message": "User created successfully"})
 		return
 	}
 
-	if err != sql.ErrNoRows {
-		ctx.JSON(200, gin.H{"message": err.Error()})
+	if util.CheckPassword(req.Password, user.Password) == nil {
+		ctx.JSON(200, gin.H{"message": "Login successful"})
 		return
 	}
+	ctx.JSON(200, errorResponse("Invalid username or password"))
 
-	hashedPassword, err := util.HashPassword(req.Password)
-	if err != nil {
-		ctx.JSON(200, gin.H{"message": err.Error()})
-		return
-	}
-
-	arg := db.CreateUserParams{
-		Username: req.Username,
-		Password: hashedPassword,
-	}
-
-	if _, err := s.CreateUser(ctx, arg); err != nil {
-		ctx.JSON(200, gin.H{"message": err.Error()})
-		return
-	}
-
-	ctx.JSON(200, gin.H{"message": "User created successfully"})
 }
