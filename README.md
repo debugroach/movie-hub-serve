@@ -18,7 +18,7 @@ To run this project on Ubuntu, you need to have the following tools installed on
   ```sh
   sudo snap install sqlc
   ```
-- **Docker**
+- **Docker**: Follow the instructions [here](https://docs.docker.com/get-docker/) to install Docker.
 
 ### Windows
 
@@ -36,7 +36,7 @@ To run this project on Windows, you need to have the following tools installed o
   ```sh
   go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
   ```
-- **Docker**
+- **Docker**: Follow the instructions [here](https://docs.docker.com/get-docker/) to install Docker.
 
 ## Getting Started
 
@@ -56,3 +56,7 @@ Follow these steps to start the server:
    ```sh
    make server
    ```
+
+---
+
+This README now includes the link to Docker's official installation page.
