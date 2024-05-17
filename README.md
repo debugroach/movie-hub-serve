@@ -2,7 +2,9 @@
 
 ## Prerequisites
 
-To run this project, you need to have the following tools installed on your system:
+### Ubuntu
+
+To run this project on Ubuntu, you need to have the following tools installed on your system:
 
 - **make**: 
   ```sh
@@ -15,6 +17,24 @@ To run this project, you need to have the following tools installed on your syst
 - **sqlc**: 
   ```sh
   sudo snap install sqlc
+  ```
+- **Docker**
+
+### Windows
+
+To run this project on Windows, you need to have the following tools installed on your system:
+
+- **make**: 
+  ```sh
+  scoop install make
+  ```
+- **Go**: 
+  ```sh
+  scoop install go
+  ```
+- **sqlc**: 
+  ```sh
+  go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
   ```
 - **Docker**
 
@@ -36,4 +56,3 @@ Follow these steps to start the server:
    ```sh
    make server
    ```
-
