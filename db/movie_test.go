@@ -11,10 +11,10 @@ import (
 func TestGetMovie(t *testing.T) {
 	args := CreateMovieParams{
 		ID:           util.GenerateRandomInt(1, 100),
-		Title:        "title",
-		BackdropPath: "1",
-		PosterPath:   "2",
-		VoteAverage:  1,
+		Title:        util.GenerateRandomString(6),
+		BackdropPath: util.GenerateRandomString(10),
+		PosterPath:   util.GenerateRandomString(10),
+		VoteAverage:  float64(util.GenerateRandomInt(1, 10)),
 	}
 	result, err := queries.CreateMovie(context.Background(), args)
 	require.NoError(t, err)

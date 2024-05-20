@@ -47,14 +47,14 @@ func (s *Server) login(ctx *gin.Context) {
 			return
 		}
 
-		ctx.JSON(200, gin.H{"message": "User created successfully"})
+		ctx.JSON(200, gin.H{"message": "用户创建成功"})
 		return
 	}
 
 	if util.CheckPassword(req.Password, user.Password) == nil {
-		ctx.JSON(200, gin.H{"message": "Login successful"})
+		ctx.JSON(200, gin.H{"message": "登录成功"})
 		return
 	}
-	ctx.JSON(200, errorResponse("Invalid username or password"))
+	ctx.JSON(200, errorResponse("用户名或密码错误"))
 
 }

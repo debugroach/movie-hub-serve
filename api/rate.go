@@ -22,7 +22,7 @@ type rateRequest struct {
 func (s *Server) createMovie(ctx *gin.Context, req rateRequest) error {
 	_, err := s.GetMovie(ctx, req.MovieID)
 
-	if err != sql.ErrNoRows {	
+	if err != sql.ErrNoRows {
 		return err
 	}
 
@@ -70,7 +70,7 @@ func (s *Server) rate(ctx *gin.Context) {
 
 		ctx.JSON(200, gin.H{
 			"hasError": false,
-			"message":  "Updated rating successfully",
+			"message":  "成功更新评分",
 		})
 		return
 	}
@@ -87,6 +87,6 @@ func (s *Server) rate(ctx *gin.Context) {
 
 	ctx.JSON(200, gin.H{
 		"hasError": false,
-		"message":  "Rating created successfully",
+		"message":  "成功评分",
 	})
 }

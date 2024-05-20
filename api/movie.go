@@ -11,7 +11,6 @@ import (
 )
 
 type userRating map[string]map[int]int
-
 type recommendRequest struct {
 	Username string `json:"username" binding:"required"`
 }
@@ -33,7 +32,6 @@ func (s *Server) recommend(ctx *gin.Context) {
 			userRatings[r.Username] = make(map[int]int)
 		}
 		userRatings[r.Username][r.MovieID] = r.Rating
-		fmt.Println(r.Username, r.MovieID, userRatings[r.Username][r.MovieID])
 	}
 
 	recommendedMovies := recommendMoviesForUser(req.Username, userRatings)
